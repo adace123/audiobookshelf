@@ -1,3 +1,5 @@
+/* Astryx neutral theme uses Figtree; offline installs fall back to the system stack. */
+@import url('https://fonts.googleapis.com/css2?family=Figtree:wght@300..700&display=swap');
 @import './fonts.css';
 @import './transitions.css';
 @import './draggable.css';
