@@ -539,6 +539,84 @@ class PodcastController {
   }
 
   /**
+   * POST/PUT: /api/podcasts/:id/episode/:episodeId/cover
+   *
+   * Sets an episode's own artwork from an uploaded `cover` file or from a
+   * `url` in the body. `source: 'upload'` is deliberate: refreshEpisodeCover()
+   * returns early for `upload` (and `none`), so a rescan cannot replace a
+   * manual choice.
+   *
+   * @param {Request} req
+   * @param {Response} res
+   */
+  async setEpisodeCover(req, res) {
+    const { id, episodeId } = req.params
+    if (!isUUID(id) || !isUUID(episodeId)) return res.sendStatus(404)
+
+    const episode = await Database.podcastEpisodeModel.findByPk(episodeId)
+    if (!episode || episode.podcastId !== req.libraryItem.mediaId) return res.sendStatus(404)
+
+    const url = typeof req.body?.url === 'string' ? req.body.url.trim() : null
+    let result = null
+    if (url) {
+      if (!validateUrl(url)) return res.status(400).send('Invalid URL')
+      result = await EpisodeCoverManager.storeImageFromUrl(id, url)
+    } else if (req.files?.cover) {
+      const uploaded = Array.isArray(req.files.cover) ? req.files.cover[0] : req.files.cover
+      result = await EpisodeCoverManager.storeImageFromFile(id, uploaded.tempFilePath)
+    } else {
+      return res.status(400).send('Invalid request no file or url')
+    }
+
+    if (result?.error) {
+      Logger.warn(`[PodcastController] Episode cover set failed for ${episodeId}: ${result.error}`)
+      return res.status(400).send(result.error)
+    } else if (!result?.path) {
+      return res.status(500).send('Unknown error occurred')
+    }
+
+    const target = req.libraryItem.media.episodes?.find((ep) => ep.id === episodeId) || episode
+    await EpisodeCoverManager.withItemLock(id, () =>
+      EpisodeCoverManager.setEpisodeCoverUnlocked(req.libraryItem, target, {
+        path: result.path,
+        source: 'upload',
+        sourceUrl: url
+      })
+    )
+
+    SocketAuthority.libraryItemEmitter('item_updated', req.libraryItem)
+    const updated = await Database.podcastEpisodeModel.findByPk(episodeId)
+    res.json({ success: true, coverPath: result.path, episode: updated.toOldJSON(id) })
+  }
+
+  /**
+   * DELETE: /api/podcasts/:id/episode/:episodeId/cover
+   *
+   * Drops a manual cover and hands the episode back to the automatic rules
+   * (RSS image, then embedded art, then the show cover).
+   *
+   * @param {Request} req
+   * @param {Response} res
+   */
+  async removeEpisodeCover(req, res) {
+    const { id, episodeId } = req.params
+    if (!isUUID(id) || !isUUID(episodeId)) return res.sendStatus(404)
+
+    const episode = await Database.podcastEpisodeModel.findByPk(episodeId)
+    if (!episode || episode.podcastId !== req.libraryItem.mediaId) return res.sendStatus(404)
+
+    const target = req.libraryItem.media.episodes?.find((ep) => ep.id === episodeId) || episode
+    await EpisodeCoverManager.withItemLock(id, () =>
+      EpisodeCoverManager.setEpisodeCoverUnlocked(req.libraryItem, target, { path: null, source: null })
+    )
+    await EpisodeCoverManager.refreshEpisodeCover(req.libraryItem, target, { force: true })
+
+    SocketAuthority.libraryItemEmitter('item_updated', req.libraryItem)
+    const updated = await Database.podcastEpisodeModel.findByPk(episodeId)
+    res.json({ success: true, episode: updated.toOldJSON(id) })
+  }
+
+  /**
    * DELETE: /api/podcasts/:id/episode/:episodeId
    *
    * @param {RequestWithLibraryItem} req
@@ -622,7 +700,7 @@ class PodcastController {
     if (req.method == 'DELETE' && !req.user.canDelete) {
       Logger.warn(`[PodcastController] User "${req.user.username}" attempted to delete without permission`)
       return res.sendStatus(403)
-    } else if ((req.method == 'PATCH' || req.method == 'POST') && !req.user.canUpdate) {
+    } else if ((req.method == 'PATCH' || req.method == 'POST' || req.method == 'PUT') && !req.user.canUpdate) {
       Logger.warn(`[PodcastController] User "${req.user.username}" attempted to update without permission`)
       return res.sendStatus(403)
     }
