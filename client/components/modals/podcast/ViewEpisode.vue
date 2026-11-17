@@ -8,7 +8,7 @@
     <div ref="wrapper" class="p-4 w-full text-sm rounded-lg bg-bg shadow-lg border border-black-300 relative overflow-y-auto" style="max-height: 80vh">
       <div class="flex mb-4">
         <div class="w-12 h-12">
-          <covers-book-cover :library-item="libraryItem" :width="48" :book-cover-aspect-ratio="bookCoverAspectRatio" />
+          <covers-episode-cover :library-item-id="libraryItem?.id" :episode="episode" :width="48" />
         </div>
         <div class="grow px-2">
           <p class="text-base mb-1">{{ podcastTitle }}</p>
@@ -99,9 +99,6 @@ export default {
     audioFileDuration() {
       const duration = this.episode.duration || 0
       return this.$elapsedPretty(duration)
-    },
-    bookCoverAspectRatio() {
-      return this.$store.getters['libraries/getBookCoverAspectRatio']
     }
   },
   methods: {

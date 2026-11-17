@@ -99,6 +99,12 @@ export const getters = {
       const libraryItemId = libraryItem.libraryItemId || libraryItem.id // Workaround for /users/:id page showing media progress covers
       return `${rootState.routerBasePath}/api/items/${libraryItemId}/cover?ts=${lastUpdate}${raw ? '&raw=1' : ''}`
     },
+  getPodcastEpisodeCoverSrc:
+    (state, getters, rootState) => (libraryItemId, episodeId, timestamp = null) => {
+      if (!libraryItemId || !episodeId) return getters.getPlaceholderCoverSrc
+      const ts = timestamp ? `ts=${timestamp}` : `ts=${Date.now()}`
+      return `${rootState.routerBasePath}/api/podcasts/${libraryItemId}/episode/${episodeId}/cover?${ts}`
+    },
   getLibraryItemCoverSrcById:
     (state, getters, rootState, rootGetters) =>
     (libraryItemId, timestamp = null, raw = false) => {

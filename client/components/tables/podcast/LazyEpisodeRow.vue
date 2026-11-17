@@ -1,6 +1,9 @@
 <template>
   <div :id="`lazy-episode-${index}`" class="w-full h-full cursor-pointer" @mouseover="mouseover" @mouseleave="mouseleave">
     <div class="flex" @click="clickedEpisode">
+      <div class="w-10 flex-none mr-3">
+        <covers-episode-cover :library-item-id="libraryItemId" :episode="episode" :width="40" />
+      </div>
       <div class="grow">
         <div dir="auto" class="flex items-center">
           <span class="text-sm font-semibold">{{ episodeTitle }}</span>
