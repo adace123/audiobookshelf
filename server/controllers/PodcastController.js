@@ -550,6 +550,11 @@ class PodcastController {
    * @param {Response} res
    */
   async setEpisodeCover(req, res) {
+    if (!req.user.canUpload) {
+      Logger.warn(`User "${req.user.username}" attempted to upload an episode cover without permission`)
+      return res.sendStatus(403)
+    }
+
     const { id, episodeId } = req.params
     if (!isUUID(id) || !isUUID(episodeId)) return res.sendStatus(404)
 
