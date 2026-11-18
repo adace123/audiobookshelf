@@ -46,6 +46,11 @@ export default {
     }
   },
   computed: {
+    store() {
+      // Rows are mounted manually with Vue.extend outside the app context, so
+      // $store is not injected — mirror LazyEpisodeRow's fallback.
+      return this.$store || this.$nuxt.$store
+    },
     wrapperStyle() {
       const height = this.height || this.width
       return {
@@ -56,10 +61,10 @@ export default {
     },
     coverUrl() {
       if (this.episodeCoverFailed || !this.episode?.id) return this.itemCoverUrl
-      return this.$store.getters['globals/getPodcastEpisodeCoverSrc'](this.libraryItemId, this.episode.id, this.episode.updatedAt)
+      return this.store.getters['globals/getPodcastEpisodeCoverSrc'](this.libraryItemId, this.episode.id, this.episode.updatedAt)
     },
     itemCoverUrl() {
-      return this.$store.getters['globals/getLibraryItemCoverSrcById'](this.libraryItemId)
+      return this.store.getters['globals/getLibraryItemCoverSrcById'](this.libraryItemId)
     }
   },
   methods: {
